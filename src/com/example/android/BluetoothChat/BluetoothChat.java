@@ -44,6 +44,7 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -78,6 +79,7 @@ public class BluetoothChat extends Activity {
     private EditText mOutEditText;
     private EditText mDestName;
     private Button mSendButton;
+    private LinearLayout mSatusLayout;
 
     //Time
 	SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm:ss");
@@ -107,7 +109,7 @@ public class BluetoothChat extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if(D) Log.e(TAG, "+++ ON CREATE +++");
+        if(D) Log.d(TAG, "+++ ON CREATE +++");
 
         // Set up the window layout
         //requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
@@ -142,7 +144,7 @@ public class BluetoothChat extends Activity {
     @Override
     public void onStart() {
         super.onStart();
-        if(D) Log.e(TAG, "++ ON START ++");
+        if(D) Log.d(TAG, "++ ON START ++");
 
         // If BT is not on, request that it be enabled.
         // setupChat() will then be called during onActivityResult
@@ -158,7 +160,7 @@ public class BluetoothChat extends Activity {
     @Override
     public synchronized void onResume() {
         super.onResume();
-        if(D) Log.e(TAG, "+ ON RESUME +");
+        if(D) Log.d(TAG, "+ ON RESUME +");
 
         // Performing this check in onResume() covers the case in which BT was
         // not enabled during onStart(), so we were paused to enable it...
@@ -184,6 +186,7 @@ public class BluetoothChat extends Activity {
         mStatusArrayAdapter = new ArrayAdapter<String>(this, R.layout.message);
         mStatusView = (ListView) findViewById(R.id.status_log);
         mStatusView.setAdapter(mStatusArrayAdapter);
+        
         
         // Initialize the compose field with a listener for the return key
         mOutEditText = (EditText) findViewById(R.id.edit_text_out);
@@ -219,13 +222,13 @@ public class BluetoothChat extends Activity {
     @Override
     public synchronized void onPause() {
         super.onPause();
-        if(D) Log.e(TAG, "- ON PAUSE -");
+        if(D) Log.d(TAG, "- ON PAUSE -");
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        if(D) Log.e(TAG, "-- ON STOP --");
+        if(D) Log.d(TAG, "-- ON STOP --");
     }
 
     @Override
@@ -233,7 +236,7 @@ public class BluetoothChat extends Activity {
         super.onDestroy();
         // Stop the Bluetooth chat services
         if (mChatService != null) mChatService.stop();
-        if(D) Log.e(TAG, "--- ON DESTROY ---");
+        if(D) Log.d(TAG, "--- ON DESTROY ---");
     }
 
     private void ensureDiscoverable() {
@@ -275,7 +278,7 @@ public class BluetoothChat extends Activity {
 	        mChatService.write(send);
 	        
 	    	currentTime = simpleDateFormat.format(new Date());
-	    	mStatusArrayAdapter.add(currentTime + ">> message sent");
+	    	updateStatus(currentTime + ">> message sent");
 	    	
 	        // Reset out string buffer to zero and clear the edit text field
 	        mOutStringBuffer.setLength(0);
@@ -300,7 +303,8 @@ public class BluetoothChat extends Activity {
               // Start the Bluetooth chat services
               mChatService.start();
           	currentTime = simpleDateFormat.format(new Date());
-          	mStatusArrayAdapter.add(currentTime + ">> ChatService reset");
+          	updateStatus(currentTime + ">> ChatService reset");
+          	
             }
         }		
 	}
@@ -397,6 +401,11 @@ public class BluetoothChat extends Activity {
             }
         }
     }
+    
+    public void updateStatus(String message){
+    	mStatusArrayAdapter.add(message);
+    	mStatusView.setSelection(mStatusView.getAdapter().getCount()-1);
+    }
 
 
     
@@ -418,7 +427,7 @@ public class BluetoothChat extends Activity {
         // Request discover from BluetoothAdapter
         mBluetoothAdapter.startDiscovery();
     	currentTime = simpleDateFormat.format(new Date());
-    	mStatusArrayAdapter.add(currentTime + ">> Discovery started");
+    	updateStatus(currentTime + ">> Discovery started");
     }
     
     // The BroadcastReceiver that listens for discovered devices and
@@ -446,7 +455,7 @@ public class BluetoothChat extends Activity {
             	//mTitle.setText("scanning finished");
             	
               	currentTime = simpleDateFormat.format(new Date());
-              	mStatusArrayAdapter.add(currentTime + ">> Discovery finished");
+              	updateStatus(currentTime + ">> Discovery finished");
               	
 
               	//po zakoñczeniu skanowania po³¹cz z urz¹dzeniem docelowym
@@ -455,12 +464,12 @@ public class BluetoothChat extends Activity {
             		// Attempt to connect to the device
             		mChatService.connect(device);
                   	currentTime = simpleDateFormat.format(new Date());
-                  	mStatusArrayAdapter.add(currentTime + ">> connect to" + messageToSend[0]);
+                  	updateStatus(currentTime + ">> connect to" + messageToSend[0]);
             	}
             	else {
             		Toast.makeText(getApplicationContext(), messageToSend[0] + " is unreachable", Toast.LENGTH_SHORT).show();
                   	currentTime = simpleDateFormat.format(new Date());
-                  	mStatusArrayAdapter.add(currentTime + ">> " + messageToSend[0] + " unreachable, preparing RREQ");
+                  	updateStatus(currentTime + ">> " + messageToSend[0] + " unreachable, preparing RREQ");
             		//TODO check Reouting table and send RREQ if required
             	}
               	

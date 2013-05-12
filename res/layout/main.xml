@@ -13,18 +13,15 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    >
+    android:orientation="vertical" >
 
     <LinearLayout
-        android:orientation="horizontal"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        >
+        android:orientation="horizontal" >
 
         <Button
             android:id="@+id/button_send"
@@ -41,17 +38,15 @@
     </LinearLayout>
     
     <LinearLayout
-        android:orientation="horizontal"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        >
-        
+        android:orientation="horizontal" >
         
         <TextView
             android:id="@+id/textView1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="TO:" />
+            android:text="@string/to_" />
         
         <EditText
             android:id="@+id/dest_name"
@@ -60,37 +55,53 @@
             android:layout_weight="1" />
 
     </LinearLayout>
-    
+
+     <LinearLayout
+         android:id="@+id/chat"
+         android:layout_width="fill_parent"
+         android:layout_height="wrap_content"
+         android:orientation="vertical" >
+   
         <TextView android:id="@+id/title_conversation"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:text="Conversation"
-        android:background="#666"
-        android:textColor="#fff"
-    />
-    <ListView
-        android:id="@+id/in"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:stackFromBottom="true"
-        android:layout_weight="1" />
-    
-    <TextView android:id="@+id/title_status"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:text="Status:"
-        android:background="#666"
-        android:textColor="#fff"
-    />
-    <ListView
-        android:id="@+id/status_log"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:stackFromBottom="true"
-        android:layout_weight="1" />
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:text="Conversation"
+	        android:background="#666"
+	        android:textColor="#fff"
+	    />
+	    <ListView
+	        android:id="@+id/in"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:stackFromBottom="true"
+	        android:layout_weight="1" />
+	</LinearLayout>
 
-        
+    <LinearLayout
+        android:id="@+id/status"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical" >
 
+        <TextView
+            android:id="@+id/title_status"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:background="#666"
+            android:text="Status:"
+            android:textColor="#fff" />
 
+        <ListView
+            android:id="@+id/status_log"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:footerDividersEnabled="false"
+            android:headerDividersEnabled="false"
+            android:stackFromBottom="true" >
+        </ListView>
+
+    </LinearLayout>
 
 </LinearLayout>
