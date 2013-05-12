@@ -15,17 +15,22 @@ public final class R {
     }
     public static final class id {
         public static final int button_scan=0x7f060006;
-        public static final int button_send=0x7f060009;
-        public static final int discoverable=0x7f06000b;
+        public static final int button_send=0x7f060007;
+        public static final int dest_name=0x7f06000a;
+        public static final int discoverable=0x7f060010;
         public static final int edit_text_out=0x7f060008;
-        public static final int in=0x7f060007;
+        public static final int in=0x7f06000c;
         public static final int new_devices=0x7f060005;
         public static final int paired_devices=0x7f060003;
-        public static final int scan=0x7f06000a;
+        public static final int scan=0x7f06000f;
+        public static final int status_log=0x7f06000e;
+        public static final int textView1=0x7f060009;
+        public static final int title_conversation=0x7f06000b;
         public static final int title_left_text=0x7f060000;
         public static final int title_new_devices=0x7f060004;
         public static final int title_paired_devices=0x7f060002;
         public static final int title_right_text=0x7f060001;
+        public static final int title_status=0x7f06000d;
     }
     public static final class layout {
         public static final int custom_title=0x7f030000;

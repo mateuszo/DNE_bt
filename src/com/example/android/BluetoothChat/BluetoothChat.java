@@ -16,7 +16,11 @@
 
 package com.example.android.BluetoothChat;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Queue;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -70,19 +74,28 @@ public class BluetoothChat extends Activity {
     // Layout Views
     private TextView mTitle;
     private ListView mConversationView;
+    private ListView mStatusView; // lista wyœwietlaj¹ca co siê dzieje
     private EditText mOutEditText;
+    private EditText mDestName;
     private Button mSendButton;
 
-    
+    //Time
+	SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm:ss");
+	String currentTime;
     
     private String remoteDevice;
     HashMap<String, String> neighbors = new HashMap<String, String>();
     private ArrayAdapter<String> mNewDevicesArrayAdapter;
     
+    private Queue<String[]> messageQueue = new LinkedList<String[]>(); //kolejka wiadomoœci do wys³ania
+    private String[] messageToSend = new String[2]; // tablica wiadomoœci w formacie String[0] - destination; String[1] - message 
+    
     // Name of the connected device
     private String mConnectedDeviceName = null;
     // Array adapter for the conversation thread
     private ArrayAdapter<String> mConversationArrayAdapter;
+    // Arrat adapter for the status view
+    private ArrayAdapter<String> mStatusArrayAdapter;
     // String buffer for outgoing messages
     private StringBuffer mOutStringBuffer;
     // Local Bluetooth adapter
@@ -97,15 +110,13 @@ public class BluetoothChat extends Activity {
         if(D) Log.e(TAG, "+++ ON CREATE +++");
 
         // Set up the window layout
-        requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
+        //requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
+        requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
         setContentView(R.layout.main);
-        getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.custom_title);
+        //getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.custom_title);
 
-        // Set up the custom title
-        mTitle = (TextView) findViewById(R.id.title_left_text);
-        mTitle.setText(R.string.app_name);
-        mTitle = (TextView) findViewById(R.id.title_right_text);
 
+        
         // Get local Bluetooth adapter
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -169,10 +180,18 @@ public class BluetoothChat extends Activity {
         mConversationView = (ListView) findViewById(R.id.in);
         mConversationView.setAdapter(mConversationArrayAdapter);
 
+        // Initialize the array adapter for the status view
+        mStatusArrayAdapter = new ArrayAdapter<String>(this, R.layout.message);
+        mStatusView = (ListView) findViewById(R.id.status_log);
+        mStatusView.setAdapter(mStatusArrayAdapter);
+        
         // Initialize the compose field with a listener for the return key
         mOutEditText = (EditText) findViewById(R.id.edit_text_out);
         mOutEditText.setOnEditorActionListener(mWriteListener);
 
+        // Initialize the destination name field
+        mDestName = (EditText) findViewById(R.id.dest_name);
+        
         // Initialize the send button with a listener that for click events
         mSendButton = (Button) findViewById(R.id.button_send);
         mSendButton.setOnClickListener(new OnClickListener() {
@@ -180,9 +199,13 @@ public class BluetoothChat extends Activity {
                 // Send a message using content of the edit text widget
                 TextView view = (TextView) findViewById(R.id.edit_text_out);
                 String message = view.getText().toString();
+                view = (TextView) findViewById(R.id.dest_name);
+                String dest = view.getText().toString();
                 
                 
-                sendMessage(message);
+                
+                addMessageToQueue(message, dest);
+                mSendButton.setEnabled(false);
             }
         });
 
@@ -227,32 +250,47 @@ public class BluetoothChat extends Activity {
      * Sends a message.
      * @param message  A string of text to send.
      */
-    private void sendMessage(String message) {
+    
+    
+    private void addMessageToQueue(String message, String destination){
+    	messageToSend[0] = destination;
+        messageToSend[1] = message;
+        messageQueue.add(messageToSend); //dodaje wiadomoœæ do kolejki
+        
+        doDiscovery();
+    }
+    
+    public void sendMessageBt(String message) {
         // Check that we're actually connected before trying anything
-        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
-       //     Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
-       //   return;
-        	remoteDevice = message;
-        	doDiscovery();
-        	
-        	
-        }
-        
-        // Check that there's actually something to send
-        if (message.length() > 0) {
-            // Get the message bytes and tell the BluetoothChatService to write
-            byte[] send = message.getBytes();
-            mChatService.write(send);
+       if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
+           Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
+           return;
+       }
+    	
 
-            // Reset out string buffer to zero and clear the edit text field
-            mOutStringBuffer.setLength(0);
-            mOutEditText.setText(mOutStringBuffer);
-           
-            resetChatService();
-        }
+        // Check that there's actually something to send
+       if(message.length() >0 ) {
+    	   // Get the message bytes and tell the BluetoothChatService to write
+	        byte[] send = message.getBytes();
+	        mChatService.write(send);
+	        
+	    	currentTime = simpleDateFormat.format(new Date());
+	    	mStatusArrayAdapter.add(currentTime + ">> message sent");
+	    	
+	        // Reset out string buffer to zero and clear the edit text field
+	        mOutStringBuffer.setLength(0);
+	        mOutEditText.setText(mOutStringBuffer);
+	       
+	        resetChatService();
+       }
         
+       mSendButton.setEnabled(true);
         
     }
+    
+
+    
+    
 
     private void resetChatService() {
         mChatService.stop();
@@ -261,6 +299,8 @@ public class BluetoothChat extends Activity {
             if (mChatService.getState() == BluetoothChatService.STATE_NONE) {
               // Start the Bluetooth chat services
               mChatService.start();
+          	currentTime = simpleDateFormat.format(new Date());
+          	mStatusArrayAdapter.add(currentTime + ">> ChatService reset");
             }
         }		
 	}
@@ -272,7 +312,9 @@ public class BluetoothChat extends Activity {
             // If the action is a key-up event on the return key, send the message
             if (actionId == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_UP) {
                 String message = view.getText().toString();
-                sendMessage(message);
+                view = (TextView) findViewById(R.id.dest_name);
+                String dest = view.getText().toString();
+                addMessageToQueue(message, dest);
             }
             if(D) Log.i(TAG, "END onEditorAction");
             return true;
@@ -288,16 +330,22 @@ public class BluetoothChat extends Activity {
                 if(D) Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
                 switch (msg.arg1) {
                 case BluetoothChatService.STATE_CONNECTED:
-                    mTitle.setText(R.string.title_connected_to);
-                    mTitle.append(mConnectedDeviceName);
-                    mConversationArrayAdapter.clear();
+
+                    setTitle("connected to:" + mConnectedDeviceName);
+                    //jeœli po³¹czy³eœ siê z prawid³owym urz¹dzeniem to wyœlij do niego wiadomoœæ
+                    if(mConnectedDeviceName.equals(messageToSend[0])){
+                    	sendMessageBt(messageToSend[1]);
+                    }
+                    
                     break;
                 case BluetoothChatService.STATE_CONNECTING:
-                    mTitle.setText(R.string.title_connecting);
+                    //mTitle.setText(R.string.title_connecting);
+                    setTitle("connecting...");
                     break;
                 case BluetoothChatService.STATE_LISTEN:
                 case BluetoothChatService.STATE_NONE:
-                    mTitle.setText(R.string.title_not_connected);
+                    //mTitle.setText(R.string.title_not_connected);
+                    setTitle("not connected");
                     break;
                 }
                 break;
@@ -336,18 +384,6 @@ public class BluetoothChat extends Activity {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(D) Log.d(TAG, "onActivityResult " + resultCode);
         switch (requestCode) {
-        case REQUEST_CONNECT_DEVICE:
-            // When DeviceListActivity returns with a device to connect
-            if (resultCode == Activity.RESULT_OK) {
-                // Get the device MAC address
-                String address = data.getExtras()
-                                     .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
-                // Get the BLuetoothDevice object
-                BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
-                // Attempt to connect to the device
-                mChatService.connect(device);
-            }
-            break;
         case REQUEST_ENABLE_BT:
             // When the request to enable Bluetooth returns
             if (resultCode == Activity.RESULT_OK) {
@@ -362,28 +398,7 @@ public class BluetoothChat extends Activity {
         }
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.option_menu, menu);
-        return true;
-    }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-        case R.id.scan:
-            // Launch the DeviceListActivity to see devices and do scan
-            Intent serverIntent = new Intent(this, DeviceListActivity.class);
-            startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE);
-            return true;
-        case R.id.discoverable:
-            // Ensure this device is discoverable by others
-            ensureDiscoverable();
-            return true;
-        }
-        return false;
-    }
     
     /**
      * Start device discover with the BluetoothAdapter
@@ -392,12 +407,9 @@ public class BluetoothChat extends Activity {
         if (D) Log.d(TAG, "doDiscovery()");
 
         // Indicate scanning in the title
-       // setProgressBarIndeterminateVisibility(true);
-      //  setTitle(R.string.scanning);
-
-        // Turn on sub-title for new devices
-       // findViewById(R.id.title_new_devices).setVisibility(View.VISIBLE);
-
+        setProgressBarIndeterminateVisibility(true);
+        //mTitle.setText("scanning...");
+        setTitle("scanning...");
         // If we're already discovering, stop it
         if (mBluetoothAdapter.isDiscovering()) {
         	mBluetoothAdapter.cancelDiscovery();
@@ -405,6 +417,8 @@ public class BluetoothChat extends Activity {
 
         // Request discover from BluetoothAdapter
         mBluetoothAdapter.startDiscovery();
+    	currentTime = simpleDateFormat.format(new Date());
+    	mStatusArrayAdapter.add(currentTime + ">> Discovery started");
     }
     
     // The BroadcastReceiver that listens for discovered devices and
@@ -420,16 +434,40 @@ public class BluetoothChat extends Activity {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);                	
   
                neighbors.put(device.getName(), device.getAddress());
-               // 	if (D) Log.d(TAG, neighbors.get(device.getName()));            // When discovery is finished, change the Activity title
+               //jeœli ju¿ znalaz³eœ odpowiednie urz¹dzenie zakoñcz skanowanie
+               if(device.getName().equals(messageToSend[0])){
+            	   mBluetoothAdapter.cancelDiscovery();
+               }
+                	if (D) Log.d(TAG, neighbors.get(device.getName()));            
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 setProgressBarIndeterminateVisibility(false);
-                setTitle(R.string.select_device);
-                
-                BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(neighbors.get(remoteDevice));
-                // Attempt to connect to the device
-                mChatService.connect(device);
+                setTitle("scanning finished");
+            	if (D) Log.d(TAG, "discovery finished");            
+            	//mTitle.setText("scanning finished");
+            	
+              	currentTime = simpleDateFormat.format(new Date());
+              	mStatusArrayAdapter.add(currentTime + ">> Discovery finished");
+              	
+
+              	//po zakoñczeniu skanowania po³¹cz z urz¹dzeniem docelowym
+            	if(neighbors.get(messageToSend[0]) != null){
+            		BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(neighbors.get(messageToSend[0]));
+            		// Attempt to connect to the device
+            		mChatService.connect(device);
+                  	currentTime = simpleDateFormat.format(new Date());
+                  	mStatusArrayAdapter.add(currentTime + ">> connect to" + messageToSend[0]);
+            	}
+            	else {
+            		Toast.makeText(getApplicationContext(), messageToSend[0] + " is unreachable", Toast.LENGTH_SHORT).show();
+                  	currentTime = simpleDateFormat.format(new Date());
+                  	mStatusArrayAdapter.add(currentTime + ">> " + messageToSend[0] + " unreachable, preparing RREQ");
+            		//TODO check Reouting table and send RREQ if required
+            	}
+              	
             }
         }
+
+		
     };
 
 }
