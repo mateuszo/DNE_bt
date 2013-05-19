@@ -44,7 +44,6 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -79,7 +78,6 @@ public class BluetoothChat extends Activity {
     private EditText mOutEditText;
     private EditText mDestName;
     private Button mSendButton;
-    private LinearLayout mSatusLayout;
 
     //Time
 	SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm:ss");
@@ -109,7 +107,7 @@ public class BluetoothChat extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if(D) Log.d(TAG, "+++ ON CREATE +++");
+        if(D) Log.e(TAG, "+++ ON CREATE +++");
 
         // Set up the window layout
         //requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
@@ -144,7 +142,7 @@ public class BluetoothChat extends Activity {
     @Override
     public void onStart() {
         super.onStart();
-        if(D) Log.d(TAG, "++ ON START ++");
+        if(D) Log.e(TAG, "++ ON START ++");
 
         // If BT is not on, request that it be enabled.
         // setupChat() will then be called during onActivityResult
@@ -160,7 +158,7 @@ public class BluetoothChat extends Activity {
     @Override
     public synchronized void onResume() {
         super.onResume();
-        if(D) Log.d(TAG, "+ ON RESUME +");
+        if(D) Log.e(TAG, "+ ON RESUME +");
 
         // Performing this check in onResume() covers the case in which BT was
         // not enabled during onStart(), so we were paused to enable it...
@@ -187,7 +185,6 @@ public class BluetoothChat extends Activity {
         mStatusView = (ListView) findViewById(R.id.status_log);
         mStatusView.setAdapter(mStatusArrayAdapter);
         
-        
         // Initialize the compose field with a listener for the return key
         mOutEditText = (EditText) findViewById(R.id.edit_text_out);
         mOutEditText.setOnEditorActionListener(mWriteListener);
@@ -208,7 +205,7 @@ public class BluetoothChat extends Activity {
                 
                 
                 addMessageToQueue(message, dest);
-                mSendButton.setEnabled(false);
+                //mSendButton.setEnabled(false);
             }
         });
 
@@ -222,13 +219,13 @@ public class BluetoothChat extends Activity {
     @Override
     public synchronized void onPause() {
         super.onPause();
-        if(D) Log.d(TAG, "- ON PAUSE -");
+        if(D) Log.e(TAG, "- ON PAUSE -");
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        if(D) Log.d(TAG, "-- ON STOP --");
+        if(D) Log.e(TAG, "-- ON STOP --");
     }
 
     @Override
@@ -236,7 +233,7 @@ public class BluetoothChat extends Activity {
         super.onDestroy();
         // Stop the Bluetooth chat services
         if (mChatService != null) mChatService.stop();
-        if(D) Log.d(TAG, "--- ON DESTROY ---");
+        if(D) Log.e(TAG, "--- ON DESTROY ---");
     }
 
     private void ensureDiscoverable() {
@@ -275,10 +272,10 @@ public class BluetoothChat extends Activity {
        if(message.length() >0 ) {
     	   // Get the message bytes and tell the BluetoothChatService to write
 	        byte[] send = message.getBytes();
-	        mChatService.write(send);
+	       // mChatService.write(send);
 	        
 	    	currentTime = simpleDateFormat.format(new Date());
-	    	updateStatus(currentTime + ">> message sent");
+	    	mStatusArrayAdapter.add(currentTime + ">> message sent");
 	    	
 	        // Reset out string buffer to zero and clear the edit text field
 	        mOutStringBuffer.setLength(0);
@@ -303,8 +300,7 @@ public class BluetoothChat extends Activity {
               // Start the Bluetooth chat services
               mChatService.start();
           	currentTime = simpleDateFormat.format(new Date());
-          	updateStatus(currentTime + ">> ChatService reset");
-          	
+          	mStatusArrayAdapter.add(currentTime + ">> ChatService reset");
             }
         }		
 	}
@@ -334,13 +330,7 @@ public class BluetoothChat extends Activity {
                 if(D) Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
                 switch (msg.arg1) {
                 case BluetoothChatService.STATE_CONNECTED:
-
-                    setTitle("connected to:" + mConnectedDeviceName);
-                    //jeœli po³¹czy³eœ siê z prawid³owym urz¹dzeniem to wyœlij do niego wiadomoœæ
-                    if(mConnectedDeviceName.equals(messageToSend[0])){
-                    	sendMessageBt(messageToSend[1]);
-                    }
-                    
+                    setTitle("connected to:" + mConnectedDeviceName); 
                     break;
                 case BluetoothChatService.STATE_CONNECTING:
                     //mTitle.setText(R.string.title_connecting);
@@ -358,13 +348,15 @@ public class BluetoothChat extends Activity {
                 // construct a string from the buffer
                 String writeMessage = new String(writeBuf);
                 mConversationArrayAdapter.add("Me:  " + writeMessage);
+                setTitle("messageSent");
+
                 break;
             case MESSAGE_READ:
-                byte[] readBuf = (byte[]) msg.obj;
-                // construct a string from the valid bytes in the buffer
-                String readMessage = new String(readBuf, 0, msg.arg1);
-                processMessage(readMessage);
-                mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
+                String[] readMsg = (String[]) msg.obj;
+
+                
+                processMessage(readMsg);
+                mConversationArrayAdapter.add(readMsg[0] + ":  " + readMsg[1]);
                 resetChatService();
                 break;
             case MESSAGE_DEVICE_NAME:
@@ -380,7 +372,7 @@ public class BluetoothChat extends Activity {
             }
         }
 
-		private void processMessage(String readMessage) {
+		private void processMessage(String[] readMsg) {
 			
 		}
     };
@@ -400,11 +392,6 @@ public class BluetoothChat extends Activity {
                 finish();
             }
         }
-    }
-    
-    public void updateStatus(String message){
-    	mStatusArrayAdapter.add(message);
-    	mStatusView.setSelection(mStatusView.getAdapter().getCount()-1);
     }
 
 
@@ -427,7 +414,7 @@ public class BluetoothChat extends Activity {
         // Request discover from BluetoothAdapter
         mBluetoothAdapter.startDiscovery();
     	currentTime = simpleDateFormat.format(new Date());
-    	updateStatus(currentTime + ">> Discovery started");
+    	mStatusArrayAdapter.add(currentTime + ">> Discovery started");
     }
     
     // The BroadcastReceiver that listens for discovered devices and
@@ -448,6 +435,7 @@ public class BluetoothChat extends Activity {
             	   mBluetoothAdapter.cancelDiscovery();
                }
                 	if (D) Log.d(TAG, neighbors.get(device.getName()));            
+                	
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 setProgressBarIndeterminateVisibility(false);
                 setTitle("scanning finished");
@@ -455,23 +443,26 @@ public class BluetoothChat extends Activity {
             	//mTitle.setText("scanning finished");
             	
               	currentTime = simpleDateFormat.format(new Date());
-              	updateStatus(currentTime + ">> Discovery finished");
+              	mStatusArrayAdapter.add(currentTime + ">> Discovery finished");
               	
-
-              	//po zakoñczeniu skanowania po³¹cz z urz¹dzeniem docelowym
-            	if(neighbors.get(messageToSend[0]) != null){
-            		BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(neighbors.get(messageToSend[0]));
-            		// Attempt to connect to the device
-            		mChatService.connect(device);
-                  	currentTime = simpleDateFormat.format(new Date());
-                  	updateStatus(currentTime + ">> connect to" + messageToSend[0]);
-            	}
-            	else {
-            		Toast.makeText(getApplicationContext(), messageToSend[0] + " is unreachable", Toast.LENGTH_SHORT).show();
-                  	currentTime = simpleDateFormat.format(new Date());
-                  	updateStatus(currentTime + ">> " + messageToSend[0] + " unreachable, preparing RREQ");
-            		//TODO check Reouting table and send RREQ if required
-            	}
+              	 // czy discovery rzeczywiœcie siê zakoñczy³o
+                if (mChatService.getState() != BluetoothChatService.STATE_CONNECTING) { 
+	              	//po zakoñczeniu skanowania po³¹cz z urz¹dzeniem docelowym
+	            	if(neighbors.get(messageToSend[0]) != null){
+	            		BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(neighbors.get(messageToSend[0]));
+	            		// Attempt to connect to the device
+	        	        byte[] send = messageToSend[1].getBytes();
+	            		mChatService.connectAndSend(device, send); //wysy³a ci¹g bajtów send do urz¹dzenia device
+	                  	currentTime = simpleDateFormat.format(new Date());
+	                  	mStatusArrayAdapter.add(currentTime + ">> connect to" + messageToSend[0] + messageToSend[1]);
+	            	}
+	            	else {
+	            		Toast.makeText(getApplicationContext(), messageToSend[0] + " is unreachable", Toast.LENGTH_SHORT).show();
+	                  	currentTime = simpleDateFormat.format(new Date());
+	                  	mStatusArrayAdapter.add(currentTime + ">> " + messageToSend[0] + " unreachable, preparing RREQ");
+	            		//TODO check Reouting table and send RREQ if required
+	            	}
+                }
               	
             }
         }
